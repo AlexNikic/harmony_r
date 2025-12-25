@@ -39,6 +39,18 @@
 #'
 #' @param clustering_algorithm A string value to select the clustering algorithm to use. Must be one of: "affinity_propagation", "kmeans", "deterministic", "hdbscan". Default is "affinity_propagation".
 #'
+#' @param ... Optional named arguments:
+#' \describe{
+#'   \item{model}{The HuggingFace model to be used by the matcher.
+#'     Currently recommended models to use with Harmony are:
+#'     \itemize{
+#'       \item \code{sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+#'       \item \code{sentence-transformers/paraphrase-multilingual-mpnet-base-v2}
+#'       \item \code{harmonydata/mental_health_harmonisation_1}
+#'     }
+#'   }
+#' }
+#'
 #' @return A list containing the matched instruments retrieved from the Harmony Data API. The returned object includes attributes such as the similarity matrix, identified clusters, associated cluster topics, and other relevant metadata.
 #'
 #' @examples
@@ -69,7 +81,12 @@
 #' @author Ulster University [cph]
 
 
-match_instruments <- function(instruments, topics = list(), is_negate = TRUE, clustering_algorithm = "affinity_propagation") {
+match_instruments <- function(instruments,
+                              topics = list(),
+                              is_negate = TRUE,
+                              clustering_algorithm = "affinity_propagation",
+                              ...
+                              ) {
     #most of the work is simply creating the body
     #steps to create the body
     #take a list of instruments and convert it to a format that is acceptable by the databse
@@ -99,6 +116,15 @@ match_instruments <- function(instruments, topics = list(), is_negate = TRUE, cl
     # add the topics
     instruments[["topics"]] <- topics
 
+    # allow the user to select which llm to use
+    kwargs <- list(...)
+    if ("model" %in% names(kwargs)) {
+      instruments[["parameters"]] <- list(
+        "framework" = "huggingface",
+        "model" = kwargs$model
+      )
+    }
+
     #from questions u need to delete anything after source page
     bod <- jsonlite::toJSON(instruments, pretty = TRUE, auto_unbox = TRUE)
     res <- httr::POST(
@@ -110,6 +136,8 @@ match_instruments <- function(instruments, topics = list(), is_negate = TRUE, cl
                       httr::add_headers(.headers = headers), body = bod, encode = "json")
     #contents
     conten <- content(res)
+
+    print(bod)
 
     # for the clusters, we need to add 1 to the item_ids since R indexes from 1 (whereas python indexes from 0)
     for (i in seq_along(conten$clusters)) {
