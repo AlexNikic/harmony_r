@@ -137,8 +137,6 @@ match_instruments <- function(instruments,
     #contents
     conten <- content(res)
 
-    print(bod)
-
     # for the clusters, we need to add 1 to the item_ids since R indexes from 1 (whereas python indexes from 0)
     for (i in seq_along(conten$clusters)) {
         for (j in seq_along(conten$clusters[[i]]$item_ids)) {
