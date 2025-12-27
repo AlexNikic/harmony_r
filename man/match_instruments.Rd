@@ -31,14 +31,12 @@ The Harmony API defaults to \code{is_negate = TRUE}, as some users prefer detect
 
 \item{...}{Optional named arguments:
 \describe{
-  \item{model}{The HuggingFace model to be used by the matcher.
-    Currently recommended models to use with Harmony are:
+  \code{model} The HuggingFace model to be used by the matcher. Currently recommended models to use with Harmony are:
     \itemize{
       \item \code{sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       \item \code{sentence-transformers/paraphrase-multilingual-mpnet-base-v2}
       \item \code{harmonydata/mental_health_harmonisation_1}
     }
-  }
 }}
 }
 \value{
@@ -65,6 +63,15 @@ instruments <- list(instrument_A, instrument_B)
 matched_instruments <- match_instruments(
   instruments,
   topics = list("anxiety", "depression")
+)
+
+# with optional arguments
+matched_instruments <- match_instruments(
+  instruments,
+  topics = list("anxiety", "depression"),
+  is_negate = TRUE,
+  clustering_algorithm = "affinity_propagation",
+  model = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
 }
 

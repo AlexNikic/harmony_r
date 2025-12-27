@@ -41,14 +41,12 @@
 #'
 #' @param ... Optional named arguments:
 #' \describe{
-#'   \item{model}{The HuggingFace model to be used by the matcher.
-#'     Currently recommended models to use with Harmony are:
+#'   \code{model} The HuggingFace model to be used by the matcher. Currently recommended models to use with Harmony are:
 #'     \itemize{
 #'       \item \code{sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
 #'       \item \code{sentence-transformers/paraphrase-multilingual-mpnet-base-v2}
 #'       \item \code{harmonydata/mental_health_harmonisation_1}
 #'     }
-#'   }
 #' }
 #'
 #' @return A list containing the matched instruments retrieved from the Harmony Data API. The returned object includes attributes such as the similarity matrix, identified clusters, associated cluster topics, and other relevant metadata.
@@ -70,6 +68,15 @@
 #' matched_instruments <- match_instruments(
 #'   instruments,
 #'   topics = list("anxiety", "depression")
+#' )
+#'
+#' # with optional arguments
+#' matched_instruments <- match_instruments(
+#'   instruments,
+#'   topics = list("anxiety", "depression"),
+#'   is_negate = TRUE,
+#'   clustering_algorithm = "affinity_propagation",
+#'   model = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 #' )
 #' }
 #'
