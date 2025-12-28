@@ -1,6 +1,8 @@
 ---
 title: Harmony R Walkthrough
-output: html_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 # Harmony walkthrough - R library
