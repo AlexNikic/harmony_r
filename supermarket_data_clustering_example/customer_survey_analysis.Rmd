@@ -1,0 +1,172 @@
+---
+title: "Analysis of clusters in an online customer survey"
+author: "Alex Nikic"
+date: "2025-12-18"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is an example notebook on how to use Harmony to analyse clusters in an online customer survey.
+
+First we will import the Harmony library.
+```{r import harmony}
+# If you have not already installed Harmony, you can uncomment the following line of code.
+# install.packages("harmonydata")
+
+library(harmonydata)
+```
+
+Now we will load the CSV file containing the customer survey responses. The CSV file contains 100 responses of customers in a survey asking for feedback on a supermarket.
+
+```{r load csv}
+df <- read.csv("survey_response.csv")
+head(df)
+```
+
+Now we will call Harmony to get the response from the server.
+
+```{r match instruments}
+instrument <- create_instrument_from_list(df$response)
+match <- match_instruments(instrument)
+```
+
+We can view the clusters provided by Harmony using the following code.
+
+```{r clusters}
+for (i in seq_along(match$clusters)) {
+    print(paste0("Cluster ", match$clusters[[i]]$cluster_id, ": ", match$clusters[[i]]$text_description))
+
+    keywords <- c()
+    for (j in seq_along(match$clusters[[i]]$keywords)) {
+        keywords <- c(keywords, match$clusters[[i]]$keywords[[j]])
+    }
+    keywords_output <- paste("Keywords:", paste(keywords, collapse = ", "))
+    cat(keywords_output, "\n")
+
+    for (j in seq_along(match$clusters[[i]]$item_ids)) {
+        id <- match$clusters[[i]]$item_ids[[j]]
+        cat(paste("    ", match$questions[[id]]$question_text, "\n"))
+    }
+    cat("\n")
+}
+```
+
+We can view the size of each cluster.
+
+```{r cluster sizes}
+cluster <- c()
+size <- c()
+
+for (i in seq_along(match$clusters)) {
+    cluster <- append(cluster, match$clusters[[i]]$text_description)
+    size <- append(size, length(match$clusters[[i]]$item_ids))
+}
+
+cluster_df <- data.frame(
+  id = seq(1:length(match$clusters)),
+  cluster = cluster,
+  size = size
+)
+cluster_df
+```
+
+Harmony picks one of the items in each cluster to act as a representative (centroid) for the cluster. We can gain a more informative summary of the content of each cluster by querying OpenAI.
+
+You can protect your API key in R using the following method. This way when you distribute this notebook, you are not inadvertently exposing your API key.
+
+If you type in the R console the following command:
+```
+file.edit("~/.Renviron")
+```
+
+you can input your secret API key.
+```
+OPENAI_API_KEY = "your_open_ai_key_here"
+```
+
+Then after restarting R, the API key will be loaded up and can be accessed as follows.
+
+```{r api key}
+api_key <- Sys.getenv("OPENAI_API_KEY")
+```
+
+Now we can send a request to OpenAI asking it to summarise each cluster.
+```{r open ai request}
+library(httr)
+library(jsonlite)
+
+# Prepare headers
+headers <- add_headers(
+  Authorization = paste("Bearer", api_key),
+  `Content-Type` = "application/json"
+)
+
+openai_outputs <- c()
+
+for (i in seq_along(match$clusters)) {
+  
+  all_inputs <- list(
+    list(
+      role = "system",
+      content = "Give a topic title for the following list of survey responses. Do not give any other output."
+    )
+  )
+  
+  # Add each question to the list
+  for (j in seq_along(match$clusters[[i]]$item_ids)) {
+        id <- match$clusters[[i]]$item_ids[[j]]
+        question_text <- match$questions[[id]]$question_text
+        all_inputs <- append(all_inputs, list(
+          list(
+            role = "user",
+            content = question_text
+          )
+        ))
+  }
+  
+  # JSON body
+  json_data <- list(
+    model = "gpt-4.1",
+    input = all_inputs
+  )
+  
+  # Make POST request to OpenAI
+  response <- POST(
+    url = "https://api.openai.com/v1/responses",
+    headers,
+    body = toJSON(json_data, auto_unbox = TRUE)
+  )
+  
+  # Parse response
+  res_content <- content(response, as = "parsed", simplifyVector = TRUE)
+  openai_title <- res_content$output$content[[1]]$text
+  openai_outputs <- append(openai_outputs, openai_title)
+}
+```
+
+Let's view the new titles.
+```{r view open ai titles}
+cluster_df$openai_title <- openai_outputs
+cluster_df
+```
+
+```{r bar plot}
+par(mar = c(5, 27, 4, 4))
+
+# Sort in descending order
+cluster_df <- cluster_df[order(cluster_df$size, decreasing = FALSE), ]
+
+barplot(
+  height = cluster_df$size,
+  names.arg = cluster_df$openai_title,
+  horiz = TRUE,
+  las = 1,                # horizontal text
+  xlab = "Size",
+  main = "Cluster Sizes"
+)
+```
