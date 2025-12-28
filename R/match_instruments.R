@@ -154,5 +154,14 @@ match_instruments <- function(instruments,
         conten$clusters[[i]]$cluster_id <- conten$clusters[[i]]$cluster_id + 1
     }
 
+    # here we will convert the match_matrix to a data frame to avoid users boilerplating this code
+    df <- data.frame(conten$matches[[1]])
+    for (x in seq_along(conten$matches)) {
+        df[x, ] <- conten$matches[[x]]
+    }
+    colnames(df) <- lapply(conten$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
+    rownames(df) <- lapply(conten$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
+    conten$matches <- df
+    
     return(conten)
 }
