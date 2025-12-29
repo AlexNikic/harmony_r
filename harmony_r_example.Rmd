@@ -1,6 +1,8 @@
 ---
-title: An R Markdown document converted from "/home/thomas/Downloads/Harmony_R_example.ipynb"
-output: html_document
+title: Harmony R Walkthrough
+output:
+  html_document:
+    df_print: paged
 ---
 
 # Harmony walkthrough - R library
@@ -89,11 +91,21 @@ The total number of questions is:
 length(match$questions)
 ```
 
-The first three entries in the similarity matrix for the questions are:
+We can view the first few rows of the similarity matrix for the questions.
 
 ```{r}
-match$matches[[1]][c(1, 2, 3)]
+head(match$matches)
 ```
+
+We can also plot a heat map of the questions similarity matrix.
+
+```{r}
+heatmap(as.matrix(match$matches), 
+        Rowv = NA, Colv = NA, main = "Questions Similarity Matrix",
+        margins = c(10, 10))
+```
+
+
 The first three entries in the similarity matrix for the response options are:
 
 ```{r}
@@ -176,26 +188,16 @@ for (i in seq_along(match$instrument_to_instrument_similarities)) {
 
 ## Saving to CSV/Excel
 
-Let's convert to a dataframe so we can export to CSV:
+We can simply export the `match$matches` data frame to a CSV file.
 
 ```{r}
-df <- data.frame(match$matches[[1]])
-for (x in seq_along(match$matches)) {
-    df[x, ] <- match$matches[[x]]
-}
+write.csv(match$matches, "matches.csv")
 ```
 
-Set the row and column names to something human readable:
+Similarly we can export `df_crosswalk_table`.
 
 ```{r}
-colnames(df) <- lapply(match$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
-rownames(df) <- lapply(match$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
-```
-
-Now we can save to CSV:
-
-```{r}
-write.csv(df, "matches.csv")
+write.csv(df_crosswalk_table, "crosswalk_table.csv")
 ```
 
 If you open the CSV generated, you can see the complete matrix. You can also open in Excel.

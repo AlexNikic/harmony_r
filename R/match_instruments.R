@@ -39,6 +39,16 @@
 #'
 #' @param clustering_algorithm A string value to select the clustering algorithm to use. Must be one of: "affinity_propagation", "kmeans", "deterministic", "hdbscan". Default is "affinity_propagation".
 #'
+#' @param ... Optional named arguments:
+#' \describe{
+#'   \code{model} The HuggingFace model to be used by the matcher. Currently recommended models to use with Harmony are:
+#'     \itemize{
+#'       \item \code{sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+#'       \item \code{sentence-transformers/paraphrase-multilingual-mpnet-base-v2}
+#'       \item \code{harmonydata/mental_health_harmonisation_1}
+#'     }
+#' }
+#'
 #' @return A list containing the matched instruments retrieved from the Harmony Data API. The returned object includes attributes such as the similarity matrix, identified clusters, associated cluster topics, and other relevant metadata.
 #'
 #' @examples
@@ -59,6 +69,15 @@
 #'   instruments,
 #'   topics = list("anxiety", "depression")
 #' )
+#'
+#' # with optional arguments
+#' matched_instruments <- match_instruments(
+#'   instruments,
+#'   topics = list("anxiety", "depression"),
+#'   is_negate = TRUE,
+#'   clustering_algorithm = "affinity_propagation",
+#'   model = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+#' )
 #' }
 #'
 #' @import jsonlite
@@ -69,7 +88,12 @@
 #' @author Ulster University [cph]
 
 
-match_instruments <- function(instruments, topics = list(), is_negate = TRUE, clustering_algorithm = "affinity_propagation") {
+match_instruments <- function(instruments,
+                              topics = list(),
+                              is_negate = TRUE,
+                              clustering_algorithm = "affinity_propagation",
+                              ...
+                              ) {
     #most of the work is simply creating the body
     #steps to create the body
     #take a list of instruments and convert it to a format that is acceptable by the databse
@@ -99,6 +123,15 @@ match_instruments <- function(instruments, topics = list(), is_negate = TRUE, cl
     # add the topics
     instruments[["topics"]] <- topics
 
+    # allow the user to select which llm to use
+    kwargs <- list(...)
+    if ("model" %in% names(kwargs)) {
+      instruments[["parameters"]] <- list(
+        "framework" = "huggingface",
+        "model" = kwargs$model
+      )
+    }
+
     #from questions u need to delete anything after source page
     bod <- jsonlite::toJSON(instruments, pretty = TRUE, auto_unbox = TRUE)
     res <- httr::POST(
@@ -121,5 +154,14 @@ match_instruments <- function(instruments, topics = list(), is_negate = TRUE, cl
         conten$clusters[[i]]$cluster_id <- conten$clusters[[i]]$cluster_id + 1
     }
 
+    # here we will convert the match_matrix to a data frame to avoid users boilerplating this code
+    df <- data.frame(conten$matches[[1]])
+    for (x in seq_along(conten$matches)) {
+        df[x, ] <- conten$matches[[x]]
+    }
+    colnames(df) <- lapply(conten$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
+    rownames(df) <- lapply(conten$questions, function(x) paste(x$question_no, x$question_text, sep = " "))
+    conten$matches <- df
+    
     return(conten)
 }
