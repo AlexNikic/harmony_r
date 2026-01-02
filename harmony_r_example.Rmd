@@ -97,7 +97,7 @@ We can view the first few rows of the similarity matrix for the questions.
 head(match$matches)
 ```
 
-We can also plot a heat map of the questions similarity matrix.
+We can also plot a heat map of the questions similarity matrix. Please bare in mind however that R will compress the matrix to fit the size of the plotting area, which may reduce the visible resolution for large matrices.
 
 ```{r}
 heatmap(as.matrix(match$matches), 
